@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Musiqa Olami Pro - Premium Edition</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+    :root {
+        --bg: #050505;
+        --bg-grad: linear-gradient(160deg, #121216 0%, #050505 100%);
+        --primary: #00ff88;
+        --primary-glow: rgba(0, 255, 136, 0.4);
+        --surface: rgba(255, 255, 255, 0.04);
+        --surface-hover: rgba(255, 255, 255, 0.08);
+        --text-main: #ffffff;
+        --text-sec: #9e9ea7;
+        --border: rgba(255, 255, 255, 0.05);
+        --sheet-bg: #101014;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+    
+    body { 
+        background: var(--bg); 
+        background-image: var(--bg-grad); 
+        color: var(--text-main); 
+        min-height: 100vh; 
+        padding-bottom: calc(env(safe-area-inset-bottom) + 130px) !important; 
+        overflow-x: hidden; 
+    }
+
+    /* === ASOSIY KARUSEL (ANIQ 4 QATOR) === */
+    .carousel-grid {
+        display: flex;
+        flex-direction: column;
+        flex-wrap: wrap; 
+        height: 295px; /* 5-qator sig'masligi uchun aniq balandlik */
+        overflow-x: auto;
+        overflow-y: hidden;
+        gap: 8px;
+        padding: 0; 
+        margin-top: 10px;
+        scrollbar-width: none; 
+        align-content: flex-start;
+    }
+    .carousel-grid::-webkit-scrollbar { display: none; }
+
+    .g-card-horizontal {
+        display: flex;
+        align-items: center;
+        background: #1a1a1a; 
+        border-radius: 10px;
+        padding: 8px;
+        width: 280px;      
+        height: 65px; 
+        flex-shrink: 0;
+        margin-right: 12px;
+        cursor: pointer;
+    }
+    .g-card-horizontal img {
+        width: 50px;
+        height: 50px;
+        border-radius: 6px;
+        object-fit: cover; 
+        margin-right: 12px;
+    }
+    .g-card-horizontal .info {
+        flex: 1;
+        overflow: hidden;
+    }
+    .g-card-horizontal h4 {
+        margin: 0;
+        font-size: 14px;
+        color: #fff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .g-card-horizontal .artist-name {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: #b3b3b3;
+    }
+
+    /* === LOADER === */
+    #loader { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease; }
+    .spinner { width: 50px; height: 50px; border: 3px solid var(--surface); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* === VIEWS & TYPOGRAPHY === */
+    .view { display: none; padding: 20px 15px; animation: fadeSlideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .view.active { display: block; }
+    @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    .page-title { font-size: 28px; font-weight: 800; margin-bottom: 20px; letter-spacing: -0.5px; }
+    .sec-head { display: flex; justify-content: space-between; align-items: flex-end; margin: 10px 0 15px; }
+    .sec-title { font-size: 19px; font-weight: 800; }
+    .btn-all { font-size: 13px; color: var(--primary); font-weight: 600; cursor: pointer; padding: 5px 12px; background: rgba(0,255,136,0.1); border-radius: 20px; transition: 0.3s; }
+    .btn-all:active { transform: scale(0.95); }
+
+    /* === ARTIST GRID (IJODKORLAR) === */
+    .artist-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 30px; }
+    .artist-card { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: 0.3s; }
+    .artist-card:active { transform: scale(0.92); }
+    .artist-card img { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto; border: 2px solid transparent; background: #1a1a24; }
+    .artist-card:hover img { border-color: var(--primary); box-shadow: 0 10px 25px var(--primary-glow); }
+    .artist-card p { margin-top: 10px; font-size: 13px; font-weight: 700; text-align: center; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+    /* === CAROUSEL 16:9 === */
+    .carousel-row { display: flex; overflow-x: auto; gap: 16px; padding-bottom: 15px; scrollbar-width: none; scroll-behavior: smooth; }
+    .carousel-row::-webkit-scrollbar { display: none; }
+    .c-card { min-width: 280px; max-width: 280px; cursor: pointer; transition: 0.3s; position: relative; }
+    .c-card:active { transform: scale(0.96); }
+    .c-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 16px; box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
+    .c-info { margin-top: 10px; }
+    .c-info h4 { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .art-link { font-size: 13px; color: var(--text-sec); font-weight: 500; margin-top: 3px; display: inline-block; cursor: pointer; transition: 0.2s; }
+    .art-link:hover { color: var(--primary); text-decoration: underline; }
+
+    /* === BOSHQA KARTALAR (g-card) === */
+    .g-card { cursor: pointer; transition: 0.3s; }
+    .g-card:active { background: var(--surface-hover); transform: scale(0.97); }
+    .g-card img { width: 55px; height: 55px; border-radius: 8px; object-fit: cover; }
+    .g-card .info { margin-left: 10px; flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+    .g-card h4 { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; color: var(--text-main); }
+    .g-card .artist-name { font-size: 11px; color: var(--text-sec); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* === LIST COL === */
+    .list-col { display: flex; flex-direction: column; gap: 8px; }
+    .l-row { display: flex; align-items: center; padding: 10px; background: transparent; border-radius: 14px; cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+    .l-row:active { background: var(--surface); transform: scale(0.98); }
+    .l-row.playing { background: rgba(0,255,136,0.05); border-color: rgba(0,255,136,0.2); }
+    .l-row.playing h4 { color: var(--primary); }
+    .l-row img { width: 55px; height: 55px; border-radius: 10px; object-fit: cover; margin-right: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .l-info { flex: 1; overflow: hidden; }
+    .l-info h4 { font-size: 15px; font-weight: 700; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .act-btn { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--text-sec); font-size: 16px; transition: 0.3s; }
+    .act-btn:active { background: var(--surface); color: white; }
+    .act-btn.active-fav { color: var(--primary); }
+
+    /* === QIDIRUV (SEARCH BOX) === */
+    .search-box { background: var(--surface); border: 1px solid var(--border); padding: 15px 20px; border-radius: 16px; display: flex; align-items: center; margin-bottom: 25px; backdrop-filter: blur(10px); }
+    .search-box i { color: var(--text-sec); font-size: 20px; transition: 0.3s; }
+    .search-box input { flex: 1; background: transparent; border: none; outline: none; color: white; font-size: 16px; font-weight: 500; margin-left: 15px; }
+    .search-box input:focus + i { color: var(--primary); }
+    .search-art-item { display: flex; align-items: center; padding: 12px; background: var(--surface); border-radius: 50px; margin-bottom: 10px; cursor: pointer; border: 1px solid var(--border); }
+    .search-art-item img { width: 50px; height: 50px; min-width: 50px; border-radius: 50%; object-fit: cover; flex-shrink: 0; display: block; }
+    .search-art-item h4 { font-size: 15px; font-weight: 700; }
+
+    /* === BOTTOM NAVIGATION === */
+    .b-nav { 
+        position: fixed; bottom: 0; left: 0; width: 100%; height: 105px; 
+        background: rgba(5,5,5,0.85); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); 
+        display: flex; justify-content: space-around; align-items: center; 
+        padding-bottom: 35px; border-top: 1px solid var(--border); z-index: 100; box-sizing: border-box; 
+    }
+    .nav-item { 
+        display: flex; flex-direction: column; align-items: center; justify-content: center; 
+        color: var(--text-sec); font-size: 11px; font-weight: 600; width: 25%; height: 75px; 
+        cursor: pointer; transition: 0.3s; 
+    }
+    .nav-item i { font-size: 22px; margin-bottom: 6px; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .nav-item.active { color: var(--primary); }
+    .nav-item.active i { transform: translateY(-4px) scale(1.1); filter: drop-shadow(0 4px 8px var(--primary-glow)); }
+
+    /* === MINI PLEYER === */
+    .mini-p { position: fixed; bottom: 110px; left: 12px; right: 12px; height: 64px; background: rgba(20, 20, 26, 0.95); backdrop-filter: blur(15px); border: 1px solid var(--border); border-radius: 16px; display: flex; align-items: center; padding: 0 10px; z-index: 90; transform: translateY(150%); transition: 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); box-shadow: 0 10px 30px rgba(0,0,0,0.6); cursor: pointer; }
+    .mini-p.show { transform: translateY(0); }
+    .mini-p img { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; margin-right: 12px; animation: spinVinyl 10s linear infinite; animation-play-state: paused; }
+    .mini-p.playing img { border-radius: 50%; animation-play-state: running; }
+    .m-info { flex: 1; overflow: hidden; }
+    .m-info h4 { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white; }
+    .m-info p { font-size: 12px; color: var(--text-sec); }
+    .m-play { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--text-main); }
+    .prog-mini { position: absolute; bottom: 0; left: 10px; right: 10px; height: 2px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+    .prog-mini-fill { height: 100%; background: var(--primary); width: 0%; transition: 0.1s linear; }
+
+    /* === FULL PLEYER === */
+    .fp { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 200; transform: translateY(100%); transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; overflow: hidden; }
+    .fp.open { transform: translateY(0); }
+    .fp-bg { position: absolute; inset: 0; background-image: url(''); background-size: cover; background-position: center; filter: blur(60px) brightness(0.3); z-index: -1; transform: scale(1.2); transition: 0.5s; }
+    .fp-nav { display: flex; justify-content: space-between; align-items: center; padding: 40px 25px 20px; flex-shrink: 0; }
+    .fp-nav i { font-size: 24px; cursor: pointer; color: white; padding: 10px; }
+    .fp-main { flex: 1; display: flex; flex-direction: column; padding: 0 30px; overflow-y: auto; padding-bottom: 20px; }
+    
+    .fp-cover { width: 100%; aspect-ratio: 1/1; max-width: 340px; margin: 10px auto 30px; position: relative; }
+    .fp-cover img { width: 100%; height: 100%; object-fit: cover; border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .fp.playing .fp-cover img { box-shadow: 0 20px 60px var(--primary-glow); transform: scale(1.02); }
+    
+    .fp-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .fp-text { flex: 1; overflow: hidden; }
+    .fp-text h2 { font-size: 24px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
+    .fp-art-link { font-size: 16px; color: var(--primary); font-weight: 600; cursor: pointer; opacity: 0.9; transition: 0.2s; }
+    .fp-art-link:active { opacity: 0.5; }
+
+    .prog-sec { width: 100%; margin-bottom: 25px; }
+    .p-bar { width: 100%; height: 6px; background: rgba(255,255,255,0.15); border-radius: 10px; cursor: pointer; position: relative; }
+    .p-fill { height: 100%; background: var(--primary); border-radius: 10px; width: 0%; position: relative; }
+    .p-fill::after { content: ''; position: absolute; right: -6px; top: 50%; transform: translateY(-50%); width: 12px; height: 12px; background: #fff; border-radius: 50%; box-shadow: 0 0 10px var(--primary); }
+    .t-lbls { display: flex; justify-content: space-between; margin-top: 10px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.6); }
+
+    .ctrls { display: flex; justify-content: space-between; align-items: center; padding: 0 10px 20px; }
+    .ctrl-btn { font-size: 24px; color: rgba(255,255,255,0.7); cursor: pointer; transition: 0.2s; }
+    .ctrl-btn.active { color: var(--primary); text-shadow: 0 0 10px var(--primary-glow); }
+    .ctrl-btn:active { transform: scale(0.8); }
+    .play-huge { font-size: 75px; color: white; transition: 0.2s; display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; }
+    .play-huge:active { transform: scale(0.9); }
+
+    .fp-bottom-acts { display: flex; justify-content: center; gap: 20px; padding-bottom: 30px; margin-top: auto; }
+    .action-chip { background: rgba(255,255,255,0.1); padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: pointer; backdrop-filter: blur(10px); }
+    .action-chip:active { background: rgba(255,255,255,0.2); }
+
+    /* === BOTTOM SHEETS (PROFIL VA BOSHQA OYNALAR) === */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 250; opacity: 0; visibility: hidden; transition: 0.3s; }
+    .overlay.show { opacity: 1; visibility: visible; }
+    .sheet { position: fixed; bottom: -100%; left: 0; width: 100%; height: 85vh; background: var(--sheet-bg); border-radius: 28px 28px 0 0; z-index: 260; transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; box-shadow: 0 -10px 40px rgba(0,0,0,0.5); }
+    .sheet.open { bottom: 0; }
+    .s-drag { width: 45px; height: 5px; background: rgba(255,255,255,0.2); border-radius: 10px; margin: 15px auto; cursor: pointer; }
+    .s-content { padding: 0 20px 30px; overflow-y: auto; flex: 1; }
+
+    /* === ARTIST PROFIL SHEET === */
+    .art-prof-head { text-align: center; margin-bottom: 25px; padding-top: 10px; }
+    .art-prof-head img { width: 130px; height: 130px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary); box-shadow: 0 10px 30px var(--primary-glow); margin-bottom: 15px; }
+    .art-prof-head h2 { font-size: 24px; font-weight: 800; }
+</style>
+
+</head>
+<body>
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <p style="margin-top: 20px; font-weight: 600; color: var(--text-sec);">Yuklanmoqda...</p>
+    </div>
+
+    <audio id="core-audio"></audio>
+
+    <main>
+        <div id="v-home" class="view active">
+            <h1 class="page-title">Kashf qiling</h1>
+            <div id="home-inject"></div>
+        </div>
+
+        <div id="v-artists" class="view">
+            <h1 class="page-title">San'atkorlar</h1>
+            <div id="artists-inject" class="artist-grid"></div>
+        </div>
+
+        <div id="v-search" class="view">
+            <h1 class="page-title">Qidiruv</h1>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="s-input" placeholder="Qo'shiq yoki san'atkor..." oninput="doSearch()" autocomplete="off">
+            </div>
+            <div id="s-results">
+                <p style="text-align: center; color: var(--text-sec); margin-top: 40px;">Nimani tinglamoqchisiz?</p>
+            </div>
+        </div>
+
+        <div id="v-fav" class="view">
+            <h1 class="page-title">Kutubxonam</h1>
+            <div id="fav-inject" class="list-col"></div>
+        </div>
+    </main>
+
+    <nav class="b-nav">
+        <div class="nav-item active" onclick="switchTab('home')">
+            <i class="fas fa-home"></i><span>Asosiy</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('artists')">
+            <i class="fas fa-users"></i><span>Ijodkorlar</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('search')">
+            <i class="fas fa-compass"></i><span>Qidiruv</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('fav')">
+            <i class="fas fa-heart"></i><span>Sevimliklar</span>
+        </div>
+    </nav>
+
+    <div id="mini" class="mini-p" onclick="openFP()">
+        <img id="m-img" src="">
+        <div class="m-info">
+            <h4 id="m-t">Title</h4>
+            <p id="m-a">Artist</p>
+        </div>
+        <div class="m-play" onclick="event.stopPropagation(); togglePlay()">
+            <i class="fas fa-play" id="m-btn"></i>
+        </div>
+        <div class="prog-mini"><div class="prog-mini-fill" id="m-fill"></div></div>
+    </div>
+
+    <div id="fp" class="fp">
+        <div class="fp-bg" id="fp-bg"></div>
+        <div class="fp-nav">
+            <i class="fas fa-chevron-down" onclick="closeFP()"></i>
+            <span style="font-size:12px; font-weight:800; letter-spacing:2px; color:rgba(255,255,255,0.7);">HOZIR CHALINMOQDA</span>
+            <i class="fas fa-ellipsis-v"></i>
+        </div>
+        <div class="fp-main">
+            <div class="fp-cover"><img id="fp-img" src=""></div>
+            
+            <div class="fp-info">
+                <div class="fp-text">
+                    <h2 id="fp-t">Title</h2>
+                    <span class="fp-art-link" id="fp-a" onclick="openArtistFromPlayer()">Artist</span>
+                </div>
+                <i class="far fa-heart" id="fp-fav" style="font-size: 26px; color: white; cursor: pointer;" onclick="toggleFavCurrent()"></i>
+            </div>
+
+            <div class="prog-sec">
+                <div class="p-bar" onclick="seek(event)"><div class="p-fill" id="fp-fill"></div></div>
+                <div class="t-lbls"><span id="fp-cur">0:00</span><span id="fp-dur">0:00</span></div>
+            </div>
+
+            <div class="ctrls">
+                <i class="fas fa-random ctrl-btn" id="btn-shuf" onclick="toggleShuf()"></i>
+                <i class="fas fa-step-backward ctrl-btn" style="font-size: 32px; color: white;" onclick="prevSong()"></i>
+                <i class="fas fa-play-circle play-huge" id="fp-btn" onclick="togglePlay()"></i>
+                <i class="fas fa-step-forward ctrl-btn" style="font-size: 32px; color: white;" onclick="nextSong()"></i>
+                <i class="fas fa-redo ctrl-btn" id="btn-rep" onclick="toggleRep()"></i>
+            </div>
+
+            <div class="fp-bottom-acts">
+                <div class="action-chip" onclick="openSheet('sheet-lyrics')">
+                    <i class="fas fa-align-left"></i> Qo'shiq matni
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay" onclick="closeAllSheets()"></div>
+
+    <div class="sheet" id="sheet-artist">
+        <div class="s-drag" onclick="closeAllSheets()"></div>
+        <div class="s-content">
+            <div class="art-prof-head">
+                <img id="sh-art-img" src="">
+                <h2 id="sh-art-name">Artist Name</h2>
+                <p style="color:var(--text-sec); font-size:14px; margin-top:5px;">Barcha qo'shiqlar</p>
+            </div>
+            <div class="list-col" id="sh-art-songs"></div>
+        </div>
+    </div>
+
+    <div class="sheet" id="sheet-list">
+        <div class="s-drag" onclick="closeAllSheets()"></div>
+        <div class="s-content">
+            <h2 class="sec-title" id="sh-list-title" style="margin-bottom: 20px; text-align: center;">Barchasi</h2>
+            <div class="list-col" id="sh-list-songs"></div>
+        </div>
+    </div>
+
+    <div class="sheet" id="sheet-lyrics">
+        <div class="s-drag" onclick="closeAllSheets()"></div>
+        <div class="s-content">
+            <h2 class="sec-title" style="text-align:center; margin-bottom:25px; color:var(--primary);">Qo'shiq matni</h2>
+            <div id="sh-lyrics-txt" style="text-align:center; line-height:2.2; font-size:16px; font-weight:600; padding-bottom:30px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Google Sheets ID
+        const SHEET_ID = '1CWDzNqbNSOlQbG7DUNlSQitpFJiJlxXOZ9K1QHrXgGE';
+        const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+
+        // Tizim o'zgaruvchilari
+        let db = [], artistsDB = {}, favs = [];
+        let q = [], qIdx = -1, isShuf = false, isRep = false;
+        
+        const aud = document.getElementById('core-audio');
+
+        /* === AUDIO HODISALARI (YUKLANISH ANIMATSIYASI UCHUN) === */
+        aud.addEventListener('waiting', () => {
+            // Qo'shiq buferga yuklanayotganda spinner aylanadi
+            document.getElementById('m-btn').className = 'fas fa-spinner fa-spin';
+            document.getElementById('fp-btn').className = 'fas fa-spinner fa-spin play-huge';
+        });
+
+        aud.addEventListener('playing', () => {
+            // Qo'shiq chalinganda pause ikonkasiga o'zgaradi
+            document.getElementById('m-btn').className = 'fas fa-pause';
+            document.getElementById('fp-btn').className = 'fas fa-pause-circle play-huge';
+            document.getElementById('mini').classList.add('playing');
+            document.getElementById('fp').classList.add('playing');
+        });
+
+        aud.addEventListener('pause', () => {
+            // Qo'shiq to'xtaganda play ikonkasiga o'zgaradi
+            document.getElementById('m-btn').className = 'fas fa-play';
+            document.getElementById('fp-btn').className = 'fas fa-play-circle play-huge';
+            document.getElementById('mini').classList.remove('playing');
+            document.getElementById('fp').classList.remove('playing');
+        });
+
+        /* === TELEFON ORQAGA TUGMASI (HISTORY API) === */
+        window.addEventListener('popstate', (e) => {
+            // Orqaga tugmasi bosilganda barcha ochiq pleyer yoki varaqlar yopiladi
+            document.getElementById('fp').classList.remove('open');
+            document.getElementById('overlay').classList.remove('show');
+            document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open'));
+
+            // Agar qaysidir oyna tarixda qolgan bo'lsa, qayta ochiladi
+            if(e.state && e.state.view) {
+                if(e.state.view === 'fp') {
+                    document.getElementById('fp').classList.add('open');
+                } else {
+                    document.getElementById('overlay').classList.add('show');
+                    document.getElementById(e.state.view).classList.add('open');
+                }
+            }
+        });
+
+        // Ilova ishga tushishi
+        async function boot() {
+            try {
+                favs = JSON.parse(localStorage.getItem('premium_favs')) || [];
+                const res = await fetch(SHEET_URL);
+                const txt = await res.text();
+                const json = JSON.parse(txt.substring(47).slice(0, -2));
+
+                db = json.table.rows.map((r, i) => {
+                    let artName = r.c[3]?.v || r.c[2]?.v || 'Noma\'lum';
+                    let coverUrl = cleanUrl(r.c[4]?.v || r.c[3]?.v) || 'https://via.placeholder.com/300';
+                    let s = {
+                        id: i,
+                        cat: r.c[0]?.v || 'Boshqa',
+                        layout: r.c[1]?.v ? r.c[1].v.toString().toLowerCase().trim() : 'carousel',
+                        title: r.c[2]?.v || r.c[1]?.v || 'Noma\'lum',
+                        artist: artName,
+                        cover: coverUrl,
+                        url: cleanUrl(r.c[5]?.v || r.c[4]?.v),
+                        lyric: (r.c[6]?.v || r.c[5]?.v) ? (r.c[6]?.v || r.c[5]?.v).replace(/\n/g, '<br>') : 'Matn kiritilmagan.',
+                        artImg: cleanUrl(r.c[7]?.v) // H ustun
+                    };
+
+                    // Artist shakllantirish
+                    let aId = artName.toLowerCase().replace(/\s+/g, '-');
+                    if(!artistsDB[aId]) {
+                        artistsDB[aId] = { id: aId, name: artName, img: s.artImg || coverUrl, songs: [] };
+                    }
+                    artistsDB[aId].songs.push(s);
+
+                    return s;
+                }).filter(x => x.url);
+
+                buildHome();
+                buildArtistsView();
+                buildFavsView();
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+            } catch (err) {
+                alert("Internet ulanishini tekshiring!"); console.log(err);
+            }
+        }
+
+        // URL tozalovchi
+        function cleanUrl(u) {
+            if(!u) return '';
+            let s = u.trim();
+            if(s.includes('drive.google.com')) {
+                let m = s.match(/[-\w]{25,}/);
+                return m ? `https://docs.google.com/uc?export=download&id=${m[0]}` : s;
+            }
+            return s;
+        }
+
+        // Asosiy sahifani qurish
+        function buildHome() {
+    const box = document.getElementById('home-inject');
+    let cats = {};
+    db.forEach(s => {
+        if(!cats[s.cat]) cats[s.cat] = { type: s.layout, items: [] };
+        cats[s.cat].items.push(s);
+    });
+
+    let html = '';
+    for(let cName in cats) {
+        let c = cats[cName];
+        html += `
+        <div class="sec-head">
+            <h2 class="sec-title">${cName}</h2>
+            <span class="btn-all" onclick="openCatAll('${cName}')">Barchasi</span>
+        </div>`;
+
+        if(c.type === 'g' || c.type === 'grid') {
+    html += `<div class="carousel-grid">` + c.items.map(s => `
+        <div class="g-card-horizontal" onclick="firePlay(${s.id}, '${cName}')">
+            <img src="${s.cover}">
+            <div class="info">
+                <h4>${s.title}</h4>
+                <p class="artist-name">${s.artist}</p>
+            </div>
+        </div>`).join('') + `</div>`;
+}
+ else if (c.type === 'top' || c.type === 'list') {
+            html += `<div class="list-col">` + c.items.slice(0,5).map(s => genRow(s, cName)).join('') + `</div>`;
+        } else {
+            html += `<div class="carousel-row">` + c.items.map(s => `
+                <div class="c-card" onclick="firePlay(${s.id}, '${cName}')">
+                    <img src="${s.cover}">
+                    <div class="c-info">
+                        <h4>${s.title}</h4>
+                        <span class="art-link" onclick="event.stopPropagation(); openArtist('${getArtId(s.artist)}')">${s.artist}</span>
+                    </div>
+                </div>`).join('') + `</div>`;
+        }
+        html += `<div style="height:25px;"></div>`;
+    }
+    box.innerHTML = html;
+}
+
+
+        function buildArtistsView() {
+            const box = document.getElementById('artists-inject');
+            box.innerHTML = Object.values(artistsDB).map(a => `
+                <div class="artist-card" onclick="openArtist('${a.id}')">
+                    <img src="${a.img}">
+                    <p>${a.name}</p>
+                </div>
+            `).join('');
+        }
+
+        function genRow(s, ctx = 'all') {
+            let isF = favs.includes(s.id);
+            let isAct = (qIdx > -1 && q[qIdx] && q[qIdx].id === s.id);
+            return `
+            <div class="l-row ${isAct ? 'playing' : ''}" onclick="firePlay(${s.id}, '${ctx}')">
+                <img src="${s.cover}">
+                <div class="l-info">
+                    <h4>${s.title}</h4>
+                    <span class="art-link" style="font-size:12px; margin:0;" onclick="event.stopPropagation(); openArtist('${getArtId(s.artist)}')">${s.artist}</span>
+                </div>
+                <div class="act-btn ${isF ? 'active-fav' : ''}" onclick="event.stopPropagation(); toggleFav(${s.id}, this)">
+                    <i class="fas fa-heart"></i>
+                </div>
+            </div>`;
+        }
+
+        function getArtId(name) { return name.toLowerCase().replace(/\s+/g, '-'); }
+
+        function switchTab(t) {
+            document.querySelectorAll('.view, .nav-item').forEach(e => e.classList.remove('active'));
+            document.getElementById('v-'+t).classList.add('active');
+            event.currentTarget.classList.add('active');
+            window.scrollTo({top:0, behavior:'smooth'});
+            if(t === 'fav') buildFavsView();
+            if(t === 'search') document.getElementById('s-input').focus();
+        }
+
+        function buildFavsView() {
+            const box = document.getElementById('fav-inject');
+            let fList = db.filter(x => favs.includes(x.id));
+            if(fList.length === 0) {
+                box.innerHTML = `<div style="text-align:center; padding:50px 0; color:var(--text-sec);"><i class="fas fa-heart-broken" style="font-size:40px; margin-bottom:15px; opacity:0.3;"></i><p>Sevimli musiqalar yo'q.</p></div>`;
+            } else {
+                box.innerHTML = fList.map(s => genRow(s, 'fav')).join('');
+            }
+        }
+
+        function toggleFav(id, btnEl = null) {
+            let idx = favs.indexOf(id);
+            if(idx > -1) favs.splice(idx, 1); else favs.push(id);
+            localStorage.setItem('premium_favs', JSON.stringify(favs));
+            
+            if(btnEl) btnEl.classList.toggle('active-fav');
+            updateFpFavBtn();
+            if(document.getElementById('v-fav').classList.contains('active')) buildFavsView();
+        }
+
+        function toggleFavCurrent() {
+            if(qIdx > -1 && q[qIdx]) toggleFav(q[qIdx].id);
+        }
+
+        function updateFpFavBtn() {
+            if(qIdx < 0 || !q[qIdx]) return;
+            const icon = document.getElementById('fp-fav');
+            if(favs.includes(q[qIdx].id)) { icon.className = 'fas fa-heart'; icon.style.color = 'var(--primary)'; icon.style.textShadow = '0 0 15px var(--primary-glow)'; }
+            else { icon.className = 'far fa-heart'; icon.style.color = 'white'; icon.style.textShadow = 'none'; }
+        }
+
+        function doSearch() {
+            let v = document.getElementById('s-input').value.toLowerCase();
+            let box = document.getElementById('s-results');
+            if(v.length < 1) { box.innerHTML = '<p style="text-align:center; color:var(--text-sec); margin-top:40px;">Nimani tinglamoqchisiz?</p>'; return; }
+
+            let artRes = Object.values(artistsDB).filter(a => a.name.toLowerCase().includes(v));
+            let sRes = db.filter(s => s.title.toLowerCase().includes(v) || s.artist.toLowerCase().includes(v));
+
+            let h = '';
+            if(artRes.length > 0) {
+                h += `<h3 style="font-size:14px; margin:15px 0 10px; color:var(--primary);">Ijodkorlar</h3>`;
+                h += artRes.map(a => `
+                    <div class="search-art-item" onclick="openArtist('${a.id}')">
+                        <img src="${a.img}">
+                        <div><h4>${a.name}</h4><p style="font-size:12px; color:var(--text-sec);">San'atkor</p></div>
+                    </div>`).join('');
+            }
+            if(sRes.length > 0) {
+                h += `<h3 style="font-size:14px; margin:20px 0 10px; color:var(--primary);">Qo'shiqlar</h3>`;
+                h += `<div class="list-col">` + sRes.map(s => genRow(s, 'search')).join('') + `</div>`;
+            }
+            box.innerHTML = h || '<p style="text-align:center; margin-top:30px; color:var(--text-sec);">Hech narsa topilmadi</p>';
+        }
+
+        function firePlay(id, ctx) {
+            if(ctx === 'fav') q = db.filter(x => favs.includes(x.id));
+            else if(ctx === 'search' || ctx === 'all') q = [...db];
+            else if(ctx.startsWith('art_')) { let aId = ctx.split('_')[1]; q = artistsDB[aId].songs; }
+            else q = db.filter(x => x.cat === ctx);
+
+            qIdx = q.findIndex(x => x.id === id);
+            playIndex();
+            if(document.getElementById('v-fav').classList.contains('active')) buildFavsView();
+        }
+
+      function playIndex() {
+    let s = q[qIdx];
+    if(!s) return;
+    aud.src = s.url;
+    
+    // UI yangilash
+    document.getElementById('m-img').src = document.getElementById('fp-img').src = s.cover;
+    document.getElementById('m-t').innerText = document.getElementById('fp-t').innerText = s.title;
+    document.getElementById('m-a').innerText = s.artist;
+
+    // FULL PLAYER ARTIST QISMI
+    let fpArtist = document.getElementById('fp-a');
+    if(fpArtist) {
+        fpArtist.innerText = s.artist;
+        
+        // Bu yerda onclick hodisasini tozalab yangidan ulaymiz
+        fpArtist.onclick = (e) => {
+            e.stopPropagation(); // Pleyerning boshqa amallarini to'xtatadi
+            
+            // 1. Pleyerni yopish (History API orqali yoki klassni olib tashlash orqali)
+            closeFP(); 
+            
+            // 2. Artist profilini ochish
+            // setTimeout yordamida pleyer yopilib bo'lgach profilni ochamiz
+            setTimeout(() => {
+                openArtist(getArtId(s.artist));
+            }, 100); 
+        };
+        fpArtist.style.cursor = "pointer";
+    }
+
+    document.getElementById('fp-bg').style.backgroundImage = `url('${s.cover}')`;
+    document.getElementById('sh-lyrics-txt').innerHTML = s.lyric;
+    
+    updateFpFavBtn();
+    
+    document.getElementById('m-btn').className = 'fas fa-spinner fa-spin';
+    document.getElementById('fp-btn').className = 'fas fa-spinner fa-spin play-huge';
+    document.getElementById('mini').classList.add('show');
+
+    aud.play().catch(e => console.log("Play error:", e));
+    
+    updateMediaSession();
+    
+}
+
+function updateMediaSession() {
+    let s = q[qIdx];
+    if ('mediaSession' in navigator) {
+        // Metadata o'rnatish
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: s.title,
+            artist: s.artist,
+            album: 'Musiqa Olami',
+            artwork: [
+                { src: s.cover, sizes: '512x512', type: 'image/png' }
+            ]
+        });
+
+        // Holatni yangilash (bu juda muhim!)
+        navigator.mediaSession.playbackState = "playing";
+
+        // Boshqaruv tugmalari
+        navigator.mediaSession.setActionHandler('play', () => {
+            aud.play();
+            navigator.mediaSession.playbackState = "playing";
+        });
+        navigator.mediaSession.setActionHandler('pause', () => {
+            aud.pause();
+            navigator.mediaSession.playbackState = "paused";
+        });
+        navigator.mediaSession.setActionHandler('previoustrack', () => {
+            prevSong(); 
+        });
+        navigator.mediaSession.setActionHandler('nexttrack', () => {
+            nextSong();
+        });
+    }
+}
+
+
+
+        function togglePlay() {
+            if(aud.paused) { aud.play(); } else { aud.pause(); }
+        }
+
+        function nextSong() {
+            if(q.length === 0) return;
+            if(isShuf) qIdx = Math.floor(Math.random() * q.length);
+            else qIdx = (qIdx + 1) % q.length;
+            playIndex();
+        }
+        function prevSong() {
+            if(q.length === 0) return;
+            qIdx = (qIdx - 1 + q.length) % q.length;
+            playIndex();
+        }
+        aud.onended = () => { if(isRep) playIndex(); else nextSong(); };
+
+        function toggleShuf() { isShuf = !isShuf; document.getElementById('btn-shuf').classList.toggle('active', isShuf); }
+        function toggleRep() { isRep = !isRep; document.getElementById('btn-rep').classList.toggle('active', isRep); }
+
+        aud.ontimeupdate = () => {
+            if(aud.duration) {
+                let pct = (aud.currentTime / aud.duration) * 100;
+                document.getElementById('fp-fill').style.width = pct + '%';
+                document.getElementById('m-fill').style.width = pct + '%';
+                document.getElementById('fp-cur').innerText = formatT(aud.currentTime);
+                document.getElementById('fp-dur').innerText = formatT(aud.duration);
+            }
+        };
+        function seek(e) { aud.currentTime = (e.offsetX / e.currentTarget.clientWidth) * aud.duration; }
+        function formatT(s) { let m = Math.floor(s/60), sc = Math.floor(s%60); return `${m}:${sc<10?'0':''}${sc}`; }
+
+        /* OYNALARNI OCHISH VA YOPISH (HISTORY BILAN) */
+        function openFP() { 
+            document.getElementById('fp').classList.add('open'); 
+            history.pushState({ view: 'fp' }, '');
+        }
+        function closeFP() { 
+            if(history.state && history.state.view === 'fp') {
+                history.back(); // History orqali popstate ishlashiga ruxsat beramiz
+            } else {
+                document.getElementById('fp').classList.remove('open');
+            }
+        }
+
+        function openSheet(id) {
+            // Avvalgi sheetlarni history-ga ta'sir qilmasdan yopamiz
+            document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open'));
+            document.getElementById('overlay').classList.add('show');
+            document.getElementById(id).classList.add('open');
+            history.pushState({ view: id }, '');
+        }
+
+        function closeAllSheets() {
+            if(history.state && history.state.view && history.state.view !== 'fp') {
+                history.back();
+            } else {
+                document.getElementById('overlay').classList.remove('show');
+                document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open'));
+            }
+        }
+
+        function openCatAll(cat) {
+            document.getElementById('sh-list-title').innerText = cat;
+            let list = db.filter(x => x.cat === cat);
+            document.getElementById('sh-list-songs').innerHTML = list.map(s => genRow(s, cat)).join('');
+            openSheet('sheet-list');
+        }
+
+        function openArtist(aId) {
+            let a = artistsDB[aId];
+            if(!a) return;
+            document.getElementById('sh-art-img').src = a.img;
+            document.getElementById('sh-art-name').innerText = a.name;
+            document.getElementById('sh-art-songs').innerHTML = a.songs.map(s => genRow(s, 'art_'+aId)).join('');
+            openSheet('sheet-artist');
+        }
+
+        function openArtistFromPlayer() {
+            if(qIdx > -1 && q[qIdx]) { closeFP(); openArtist(getArtId(q[qIdx].artist)); }
+        }
+
+        window.onload = boot;
+    </script>
+</body>
+</html>
