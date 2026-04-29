@@ -180,7 +180,7 @@
     /* === FULL PLEYER === */
     .fp { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 200; transform: translateY(100%); transition: 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); display: flex; flex-direction: column; overflow: hidden; }
     .fp.open { transform: translateY(0); }
-    .fp-bg { position: absolute; inset: 0; background-image: url(''); background-size: cover; background-position: center; filter: blur(60px) brightness(0.3); z-index: -1; transform: scale(1.2); transition: 0.5s; }
+    .fp-bg { position: absolute; inset: 0; background-image: url(''); background-size: cover; background-position: center; filter: blur(20px) brightness(0.3); z-index: -1; transform: scale(0.); transition: 0.5s; }
     .fp-nav { display: flex; justify-content: space-between; align-items: center; padding: 40px 25px 20px; flex-shrink: 0; }
     .fp-nav i { font-size: 24px; cursor: pointer; color: white; padding: 10px; }
     .fp-main { flex: 1; display: flex; flex-direction: column; padding: 0 30px; overflow-y: auto; padding-bottom: 20px; }
@@ -412,65 +412,85 @@
             }
         });
 
-        // Ilova ishga tushishi
-        async function boot() {
-            try {
-                favs = JSON.parse(localStorage.getItem('premium_favs')) || [];
-                const res = await fetch(SHEET_URL);
-                const txt = await res.text();
-                const json = JSON.parse(txt.substring(47).slice(0, -2));
+                                // Zaxira rasm yo'li (Sketchware asset papkasidagi icon.jpg)
+const DEFAULT_IMG = 'file:///android_asset/icon.jpg';
 
-                db = json.table.rows.map((r, i) => {
-                    let artName = r.c[3]?.v || r.c[2]?.v || 'Noma\'lum';
-                    let coverUrl = cleanUrl(r.c[4]?.v || r.c[3]?.v) || 'https://via.placeholder.com/300';
-                    let s = {
-                        id: i,
-                        cat: r.c[0]?.v || 'Boshqa',
-                        layout: r.c[1]?.v ? r.c[1].v.toString().toLowerCase().trim() : 'carousel',
-                        title: r.c[2]?.v || r.c[1]?.v || 'Noma\'lum',
-                        artist: artName,
-                        cover: coverUrl,
-                        url: cleanUrl(r.c[5]?.v || r.c[4]?.v),
-                        lyric: (r.c[6]?.v || r.c[5]?.v) ? (r.c[6]?.v || r.c[5]?.v).replace(/\n/g, '<br>') : 'Matn kiritilmagan.',
-                        artImg: cleanUrl(r.c[7]?.v) // H ustun
-                    };
+// Ilova ishga tushishi
+async function boot() {
+    try {
+        favs = JSON.parse(localStorage.getItem('premium_favs')) || [];
+        const res = await fetch(SHEET_URL);
+        const txt = await res.text();
+        const json = JSON.parse(txt.substring(47).slice(0, -2));
 
-                    // Artist shakllantirish
-                    let aId = artName.toLowerCase().replace(/\s+/g, '-');
-                    if(!artistsDB[aId]) {
-                        artistsDB[aId] = { id: aId, name: artName, img: s.artImg || coverUrl, songs: [] };
-                    }
-                    artistsDB[aId].songs.push(s);
+        // 1. TO'LIQ BAZA: Qidiruv va artistlar bo'limi uchun hamma qo'shiqlar olinadi
+        db = json.table.rows.map((r, i) => {
+            let artName = r.c[3]?.v || r.c[2]?.v || 'Noma\'lum';
+            
+            // O'ZGARISH: Rasm yo'q bo'lsa DEFAULT_IMG (icon.jpg) qo'yiladi
+            let coverUrl = cleanUrl(r.c[4]?.v || r.c[3]?.v) || DEFAULT_IMG;
+            
+            let s = {
+                id: i,
+                // A ustun bo'sh bo'lsa 'hidden' deb belgilaymiz
+                cat: r.c[0]?.v || 'hidden', 
+                layout: r.c[1]?.v ? r.c[1].v.toString().toLowerCase().trim() : 'carousel',
+                title: r.c[2]?.v || r.c[1]?.v || 'Noma\'lum',
+                artist: artName,
+                cover: coverUrl,
+                url: cleanUrl(r.c[5]?.v || r.c[4]?.v),
+                // G ustuni bo'sh bo'lsa link chiqmaydi
+                lyric: (r.c[6]?.v) ? r.c[6].v.replace(/\n/g, '<br>') : 'Matn kiritilmagan.',
+                artImg: cleanUrl(r.c[7]?.v) || coverUrl // Artist rasmi uchun ham zaxira
+            };
 
-                    return s;
-                }).filter(x => x.url);
-
-                buildHome();
-                buildArtistsView();
-                buildFavsView();
-                document.getElementById('loader').style.opacity = '0';
-                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
-            } catch (err) {
-                alert("Internet ulanishini tekshiring!"); console.log(err);
+            // Artistlar bazasini shakllantirish (hamma qo'shiqlar kiradi)
+            let aId = artName.toLowerCase().replace(/\s+/g, '-');
+            if(!artistsDB[aId]) {
+                artistsDB[aId] = { id: aId, name: artName, img: s.artImg || coverUrl, songs: [] };
             }
-        }
+            artistsDB[aId].songs.push(s);
 
-        // URL tozalovchi
-        function cleanUrl(u) {
-            if(!u) return '';
-            let s = u.trim();
-            if(s.includes('drive.google.com')) {
-                let m = s.match(/[-\w]{25,}/);
-                return m ? `https://docs.google.com/uc?export=download&id=${m[0]}` : s;
-            }
             return s;
-        }
+        }).filter(x => x.url); // Linki bor hamma qo'shiq qidiruvga tushadi
 
-        // Asosiy sahifani qurish
-        function buildHome() {
+        // 2. ASOSIY SAHIFA: Faqat kategoriya (A ustun) yozilganlar chiqadi
+        const homeSongs = db.filter(x => x.cat !== 'hidden');
+        
+        // Asosiy sahifani qurishda faqat filtrlangan ro'yxatni yuboramiz
+        buildHome(homeSongs); 
+
+        buildArtistsView();
+        buildFavsView();
+        
+        document.getElementById('loader').style.opacity = '0';
+        setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+    } catch (err) {
+        alert("Internet ulanishini tekshiring!");
+        console.error(err);
+    }
+}
+
+// URL tozalovchi
+function cleanUrl(u) {
+    if(!u) return '';
+    let s = u.trim();
+    if(s.includes('drive.google.com')) {
+        let m = s.match(/[-\w]{25,}/);
+        return m ? `https://docs.google.com/uc?export=download&id=${m[0]}` : s;
+    }
+    return s;
+}
+
+// Asosiy sahifani qurish
+function buildHome(data = db) {
     const box = document.getElementById('home-inject');
     let cats = {};
-    db.forEach(s => {
+    
+    data.forEach(s => {
+        // Qo'shimcha himoya: agar cat 'hidden' bo'lsa o'tkazib yuboradi
+        if(s.cat === 'hidden') return; 
+
         if(!cats[s.cat]) cats[s.cat] = { type: s.layout, items: [] };
         cats[s.cat].items.push(s);
     });
@@ -485,21 +505,20 @@
         </div>`;
 
         if(c.type === 'g' || c.type === 'grid') {
-    html += `<div class="carousel-grid">` + c.items.map(s => `
-        <div class="g-card-horizontal" onclick="firePlay(${s.id}, '${cName}')">
-            <img src="${s.cover}">
-            <div class="info">
-                <h4>${s.title}</h4>
-                <p class="artist-name">${s.artist}</p>
-            </div>
-        </div>`).join('') + `</div>`;
-}
- else if (c.type === 'top' || c.type === 'list') {
+            html += `<div class="carousel-grid">` + c.items.map(s => `
+                <div class="g-card-horizontal" onclick="firePlay(${s.id}, '${cName}')">
+                    <img src="${s.cover}" onerror="this.src='${DEFAULT_IMG}'; this.onerror=null;">
+                    <div class="info">
+                        <h4>${s.title}</h4>
+                        <p class="artist-name">${s.artist}</p>
+                    </div>
+                </div>`).join('') + `</div>`;
+        } else if (c.type === 'top' || c.type === 'list') {
             html += `<div class="list-col">` + c.items.slice(0,5).map(s => genRow(s, cName)).join('') + `</div>`;
         } else {
             html += `<div class="carousel-row">` + c.items.map(s => `
                 <div class="c-card" onclick="firePlay(${s.id}, '${cName}')">
-                    <img src="${s.cover}">
+                    <img src="${s.cover}" onerror="this.src='${DEFAULT_IMG}'; this.onerror=null;">
                     <div class="c-info">
                         <h4>${s.title}</h4>
                         <span class="art-link" onclick="event.stopPropagation(); openArtist('${getArtId(s.artist)}')">${s.artist}</span>
@@ -510,6 +529,8 @@
     }
     box.innerHTML = html;
 }
+
+
 
 
         function buildArtistsView() {
@@ -523,20 +544,22 @@
         }
 
         function genRow(s, ctx = 'all') {
-            let isF = favs.includes(s.id);
-            let isAct = (qIdx > -1 && q[qIdx] && q[qIdx].id === s.id);
-            return `
-            <div class="l-row ${isAct ? 'playing' : ''}" onclick="firePlay(${s.id}, '${ctx}')">
-                <img src="${s.cover}">
-                <div class="l-info">
-                    <h4>${s.title}</h4>
-                    <span class="art-link" style="font-size:12px; margin:0;" onclick="event.stopPropagation(); openArtist('${getArtId(s.artist)}')">${s.artist}</span>
-                </div>
-                <div class="act-btn ${isF ? 'active-fav' : ''}" onclick="event.stopPropagation(); toggleFav(${s.id}, this)">
-                    <i class="fas fa-heart"></i>
-                </div>
-            </div>`;
-        }
+    let isF = favs.includes(s.id);
+    let isAct = (qIdx > -1 && q[qIdx] && q[qIdx].id === s.id);
+    
+    return `
+    <div class="l-row ${isAct ? 'playing' : ''}" onclick="firePlay(${s.id}, '${ctx}')">
+        <img src="${s.cover}" onerror="this.src='${DEFAULT_IMG}'; this.onerror=null;">
+        <div class="l-info">
+            <h4>${s.title}</h4>
+            <span class="art-link" style="font-size:12px; margin:0;" onclick="event.stopPropagation(); openArtist('${getArtId(s.artist)}')">${s.artist}</span>
+        </div>
+        <div class="act-btn ${isF ? 'active-fav' : ''}" onclick="event.stopPropagation(); toggleFav(${s.id}, this)">
+            <i class="fas fa-heart"></i>
+        </div>
+    </div>`;
+}
+
 
         function getArtId(name) { return name.toLowerCase().replace(/\s+/g, '-'); }
 
@@ -605,15 +628,70 @@
         }
 
         function firePlay(id, ctx) {
-            if(ctx === 'fav') q = db.filter(x => favs.includes(x.id));
-            else if(ctx === 'search' || ctx === 'all') q = [...db];
-            else if(ctx.startsWith('art_')) { let aId = ctx.split('_')[1]; q = artistsDB[aId].songs; }
-            else q = db.filter(x => x.cat === ctx);
+    // 1. Pleylistni shakllantirish
+    if(ctx === 'fav') q = db.filter(x => favs.includes(x.id));
+    else if(ctx === 'search' || ctx === 'all') q = [...db];
+    else if(ctx.startsWith('art_')) { 
+        let aId = ctx.split('_')[1]; 
+        q = artistsDB[aId].songs; 
+    }
+    else q = db.filter(x => x.cat === ctx);
 
-            qIdx = q.findIndex(x => x.id === id);
-            playIndex();
-            if(document.getElementById('v-fav').classList.contains('active')) buildFavsView();
-        }
+    qIdx = q.findIndex(x => x.id === id);
+    
+    // 2. Joriy qo'shiqni aniqlash
+    currentSong = q[qIdx];
+    if(!currentSong) return;
+
+    // 3. RASMLARNI VA MA'LUMOTLARNI YANGILASH
+    
+    // Mini pleyer qismi
+    const miniP = document.querySelector('.mini-p');
+    const mImg = document.querySelector('.mini-p img');
+    if(mImg) {
+        mImg.src = currentSong.cover;
+        mImg.onerror = function() { this.src = DEFAULT_IMG; this.onerror = null; };
+    }
+    // Mini pleyer matnlari
+    document.querySelector('.m-info h4').innerText = currentSong.title;
+    document.querySelector('.m-info p').innerText = currentSong.artist;
+    
+    // Mini pleyerni ko'rsatish (lekin to'liq pleyer ochilmaydi)
+    if(miniP) miniP.classList.add('show');
+
+    // Asosiy pleyer rasmi (Orqa fonda tayyorlab qo'yiladi)
+    const fpImg = document.querySelector('.fp-cover img');
+    if(fpImg) {
+        fpImg.src = currentSong.cover;
+        fpImg.onerror = function() { this.src = DEFAULT_IMG; this.onerror = null; };
+    }
+
+    // Asosiy pleyer orqa foni (Blur effekt)
+    const fpBg = document.querySelector('.fp-bg');
+    if(fpBg) {
+        fpBg.style.backgroundImage = `url('${currentSong.cover}')`;
+    }
+
+    // Asosiy pleyer matnlari
+    document.querySelector('.fp-text h2').innerText = currentSong.title;
+    document.querySelector('.fp-art-link').innerText = currentSong.artist;
+
+    // 4. Ijroni boshlash
+    playIndex();
+
+    // 5. Sevimlilar ro'yxatini yangilash (agar ochiq bo'lsa)
+    if(document.getElementById('v-fav').classList.contains('active')) buildFavsView();
+    
+    // DIQQAT: document.querySelector('.fp').classList.add('open'); qatori olib tashlandi.
+    // Endi musiqa bosilganda pleyer oynasi sakrab chiqmaydi.
+}
+
+// Mini pleyer bosilganda asosiy pleyerni ochish uchun funksiya
+function openFullPlayer() {
+    document.querySelector('.fp').classList.add('open');
+}
+
+
 
       function playIndex() {
     let s = q[qIdx];
@@ -662,9 +740,15 @@
 }
 
 function updateMediaSession() {
-    let s = q[qIdx];
+    let s = q[qIdx]; // Sizdagi qIdx va q massivi o'zgarishsiz qoladi
+    
+    // 1. Android Java pleyeriga ma'lumot yuborish (Yangi qism)
+    if (window.JSInterface) {
+        window.JSInterface.updatePlayer(s.title, s.artist);
+    }
+
+    // 2. Standart Brauzer MediaSession (Sizdagi mavjud kod)
     if ('mediaSession' in navigator) {
-        // Metadata o'rnatish
         navigator.mediaSession.metadata = new MediaMetadata({
             title: s.title,
             artist: s.artist,
@@ -674,24 +758,10 @@ function updateMediaSession() {
             ]
         });
 
-        // Holatni yangilash (bu juda muhim!)
-        navigator.mediaSession.playbackState = "playing";
-
-        // Boshqaruv tugmalari
-        navigator.mediaSession.setActionHandler('play', () => {
-            aud.play();
-            navigator.mediaSession.playbackState = "playing";
-        });
-        navigator.mediaSession.setActionHandler('pause', () => {
-            aud.pause();
-            navigator.mediaSession.playbackState = "paused";
-        });
-        navigator.mediaSession.setActionHandler('previoustrack', () => {
-            prevSong(); 
-        });
-        navigator.mediaSession.setActionHandler('nexttrack', () => {
-            nextSong();
-        });
+        navigator.mediaSession.setActionHandler('play', () => { aud.play(); playState(true); });
+        navigator.mediaSession.setActionHandler('pause', () => { aud.pause(); playState(false); });
+        navigator.mediaSession.setActionHandler('previoustrack', () => { prev(); });
+        navigator.mediaSession.setActionHandler('nexttrack', () => { next(); });
     }
 }
 
