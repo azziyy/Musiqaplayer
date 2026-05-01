@@ -208,9 +208,47 @@
     .play-huge { font-size: 75px; color: white; transition: 0.2s; display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; }
     .play-huge:active { transform: scale(0.9); }
 
-    .fp-bottom-acts { display: flex; justify-content: center; gap: 20px; padding-bottom: 30px; margin-top: auto; }
-    .action-chip { background: rgba(255,255,255,0.1); padding: 12px 24px; border-radius: 30px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: pointer; backdrop-filter: blur(10px); }
-    .action-chip:active { background: rgba(255,255,255,0.2); }
+   /* Tugmalarni o'rab turgan konteyner */
+.fp-bottom-acts { 
+    display: flex; 
+    justify-content: center; /* Tugmalarni markazga yig'adi */
+    gap: 15px; /* Tugmalar orasidagi masofa */
+    padding: 20px 10px 40px 10px; /* Pastdan joy tashlaydi */
+    margin-top: auto; /* Pleyerning eng pastiga itaradi */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Har bir tugma (Chip) stili */
+.action-chip { 
+    background: rgba(255, 255, 255, 0.08); /* Shaffof oq fon */
+    padding: 12px 20px; 
+    border-radius: 30px; 
+    font-size: 14px; 
+    font-weight: 600; 
+    display: flex; 
+    align-items: center; 
+    gap: 10px; 
+    cursor: pointer; 
+    backdrop-filter: blur(15px); /* Orqa fonni xiralashtirish */
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+    white-space: nowrap; /* Matn bir qatorda turishi uchun */
+}
+
+/* Tugma bosilganda (effekt) */
+.action-chip:active { 
+    background: rgba(255, 255, 255, 0.2); 
+    transform: scale(0.92); /* Kichrayish effekti */
+}
+
+/* Tugma ichidagi ikonka */
+.action-chip i {
+    font-size: 16px;
+    color: #1DB954; /* Spotify yashil rangi yoki xohlagan rang */
+}
+
 
     /* === BOTTOM SHEETS (PROFIL VA BOSHQA OYNALAR) === */
     .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 250; opacity: 0; visibility: hidden; transition: 0.3s; }
@@ -323,10 +361,17 @@
             </div>
 
             <div class="fp-bottom-acts">
-                <div class="action-chip" onclick="openSheet('sheet-lyrics')">
-                    <i class="fas fa-align-left"></i> Qo'shiq matni
-                </div>
-            </div>
+    <div class="action-chip" onclick="openSheet('lyrics-sheet')">
+        <i class="fas fa-align-left"></i>
+        <span>Qo'shiq matni</span>
+    </div>
+
+    <div class="action-chip" onclick="openCurrentQueue()">
+        <i class="fas fa-list-ul"></i>
+        <span>Navbat</span>
+    </div>
+</div>
+
         </div>
     </div>
 
@@ -352,7 +397,7 @@
         </div>
     </div>
 
-    <div class="sheet" id="sheet-lyrics">
+    <div class="sheet" id="lyrics-sheet">
         <div class="s-drag" onclick="closeAllSheets()"></div>
         <div class="s-content">
             <h2 class="sec-title" style="text-align:center; margin-bottom:25px; color:var(--primary);">Qo'shiq matni</h2>
@@ -548,17 +593,18 @@ function buildHome(data = db) {
     let isAct = (qIdx > -1 && q[qIdx] && q[qIdx].id === s.id);
     
     return `
-    <div class="l-row ${isAct ? 'playing' : ''}" onclick="firePlay(${s.id}, '${ctx}')">
+    <div class="l-row ${isAct ? 'playing' : ''}" onclick="event.stopPropagation(); firePlay(${s.id}, '${ctx}')">
         <img src="${s.cover}" onerror="this.src='${DEFAULT_IMG}'; this.onerror=null;">
         <div class="l-info">
             <h4>${s.title}</h4>
-            <span class="art-link" style="font-size:12px; margin:0;" onclick="event.stopPropagation(); openArtist('${getArtId(s.artist)}')">${s.artist}</span>
+            <span class="art-link" onclick="event.stopPropagation(); openArtist('${getArtId(s.artist)}')">${s.artist}</span>
         </div>
         <div class="act-btn ${isF ? 'active-fav' : ''}" onclick="event.stopPropagation(); toggleFav(${s.id}, this)">
             <i class="fas fa-heart"></i>
         </div>
     </div>`;
 }
+
 
 
         function getArtId(name) { return name.toLowerCase().replace(/\s+/g, '-'); }
@@ -628,9 +674,10 @@ function buildHome(data = db) {
         }
 
         function firePlay(id, ctx) {
-    // 1. Pleylistni shakllantirish
+    // 1. Pleylistni shakllantirish (Kontekstga qarab)
     if(ctx === 'fav') q = db.filter(x => favs.includes(x.id));
     else if(ctx === 'search' || ctx === 'all') q = [...db];
+    else if(ctx === 'queue') { /* Navbat oynasi bo'lsa pleylist o'zgarmaydi */ }
     else if(ctx.startsWith('art_')) { 
         let aId = ctx.split('_')[1]; 
         q = artistsDB[aId].songs; 
@@ -643,6 +690,10 @@ function buildHome(data = db) {
     currentSong = q[qIdx];
     if(!currentSong) return;
 
+    // --- YANGI QO'SHIQ BOSHLANGANIDA OYNALARNI YOPISH ---
+    // Agar navbat (playlist) oynasidan musiqa tanlansa, oyna avtomatik yopiladi
+    if(ctx === 'queue') closeAllSheets();
+
     // 3. RASMLARNI VA MA'LUMOTLARNI YANGILASH
     
     // Mini pleyer qismi
@@ -652,43 +703,44 @@ function buildHome(data = db) {
         mImg.src = currentSong.cover;
         mImg.onerror = function() { this.src = DEFAULT_IMG; this.onerror = null; };
     }
-    // Mini pleyer matnlari
     document.querySelector('.m-info h4').innerText = currentSong.title;
     document.querySelector('.m-info p').innerText = currentSong.artist;
-    
-    // Mini pleyerni ko'rsatish (lekin to'liq pleyer ochilmaydi)
     if(miniP) miniP.classList.add('show');
 
-    // Asosiy pleyer rasmi (Orqa fonda tayyorlab qo'yiladi)
+    // Asosiy pleyer (Cover va Blur fon)
     const fpImg = document.querySelector('.fp-cover img');
+    const fpBg = document.querySelector('.fp-bg');
     if(fpImg) {
         fpImg.src = currentSong.cover;
         fpImg.onerror = function() { this.src = DEFAULT_IMG; this.onerror = null; };
     }
-
-    // Asosiy pleyer orqa foni (Blur effekt)
-    const fpBg = document.querySelector('.fp-bg');
-    if(fpBg) {
-        fpBg.style.backgroundImage = `url('${currentSong.cover}')`;
-    }
+    if(fpBg) fpBg.style.backgroundImage = `url('${currentSong.cover}')`;
 
     // Asosiy pleyer matnlari
     document.querySelector('.fp-text h2').innerText = currentSong.title;
     document.querySelector('.fp-art-link').innerText = currentSong.artist;
 
+    // --- QO'SHIQ MATNINI YANGILASH ---
+    const lText = document.getElementById('lyrics-text');
+    if(lText) {
+        // Agar bazada lyrics bo'lsa o'shani, yo'q bo'lsa xabar chiqaramiz
+        lText.innerText = currentSong.lyrics || "Bu qo'shiq uchun matn mavjud emas.";
+    }
+
     // 4. Ijroni boshlash
     playIndex();
 
-    // 5. Sevimlilar ro'yxatini yangilash (agar ochiq bo'lsa)
-    if(document.getElementById('v-fav').classList.contains('active')) buildFavsView();
-    
-    // DIQQAT: document.querySelector('.fp').classList.add('open'); qatori olib tashlandi.
-    // Endi musiqa bosilganda pleyer oynasi sakrab chiqmaydi.
+    // 5. Sevimlilar (agar ochiq bo'lsa yangilash)
+    if(document.getElementById('v-fav') && document.getElementById('v-fav').classList.contains('active')) {
+        buildFavsView();
+    }
 }
 
-// Mini pleyer bosilganda asosiy pleyerni ochish uchun funksiya
+// Mini pleyerni bosganda asosiy pleyerni ochish
 function openFullPlayer() {
     document.querySelector('.fp').classList.add('open');
+    // Tarixga qo'shamizki, telefon orqaga tugmasi pleyerni yopsin
+    history.pushState({ view: 'fp' }, "");
 }
 
 
@@ -812,22 +864,90 @@ function updateMediaSession() {
             }
         }
 
-        function openSheet(id) {
-            // Avvalgi sheetlarni history-ga ta'sir qilmasdan yopamiz
-            document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open'));
-            document.getElementById('overlay').classList.add('show');
-            document.getElementById(id).classList.add('open');
-            history.pushState({ view: id }, '');
-        }
+        /* --- OYNALARNI BOSHQARISH (Matn va Navbat) --- */
 
-        function closeAllSheets() {
-            if(history.state && history.state.view && history.state.view !== 'fp') {
-                history.back();
-            } else {
-                document.getElementById('overlay').classList.remove('show');
-                document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open'));
-            }
+// 1. Oynani ochish funksiyasi (Ham matn, ham navbat uchun ishlaydi)
+function openSheet(id) {
+    // Barcha ochiq oynalarni yopib olamiz
+    document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open'));
+
+    // Xira fonni (overlay) ko'rsatish
+    const overlay = document.getElementById('overlay');
+    if (overlay) {
+        overlay.classList.add('show');
+        overlay.style.visibility = 'visible';
+    }
+
+    // Tanlangan oynani (id orqali) ochish
+    const target = document.getElementById(id);
+    if (target) {
+        target.classList.add('open');
+    }
+
+    // Tarixga qo'shish (Telefonning "Back" tugmasi ishlashi uchun)
+    history.pushState({ view: id }, "");
+}
+
+function openCurrentQueue() {
+    // 1. Ro'yxat chiqadigan konteynerlarni aniqlaymiz
+    const listSongs = document.getElementById('sh-list-songs');
+    const listTitle = document.getElementById('sh-list-title');
+
+    // 2. Sarlavhani o'zgartiramiz
+    if (listTitle) {
+        listTitle.innerText = "Navbatdagi qo'shiqlar";
+    }
+
+    // 3. Ro'yxatni shakllantiramiz
+    if (listSongs) {
+        listSongs.innerHTML = ""; // Tozalash
+        
+        if (q && q.length > 0) {
+            q.forEach(song => {
+                // Kontekst sifatida 'queue' yuboramiz
+                listSongs.innerHTML += genRow(song, 'queue');
+            });
+        } else {
+            listSongs.innerHTML = '<p style="text-align:center; color:gray; padding:20px;">Navbat bo\'sh</p>';
         }
+    }
+
+    // 4. MUHIM: Oynani vizual ochish (openSheet funksiyasini chaqiramiz)
+    // Sizdagi playlist oynasining ID-si 'sheet-list' ekanini tekshiring
+    openSheet('sheet-list');
+}
+
+
+// 3. Hammasini yopish funksiyasi
+function closeAllSheets() {
+    // Agar tarixda 'fp' dan boshqa view bo'lsa, orqaga qaytaramiz
+    if(history.state && history.state.view && history.state.view !== 'fp') {
+        history.back();
+    } 
+
+    // Vizual yopish
+    document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open'));
+    
+    const overlay = document.getElementById('overlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        setTimeout(() => {
+            overlay.style.visibility = 'hidden';
+        }, 300);
+    }
+}
+
+// 4. Telefonning orqaga tugmasini ushlash
+window.onpopstate = function(event) {
+    // Tarix orqaga qaytganda barcha oynalar yopilishi shart
+    document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open'));
+    const overlay = document.getElementById('overlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        setTimeout(() => { overlay.style.visibility = 'hidden'; }, 300);
+    }
+};
+
 
         function openCatAll(cat) {
             document.getElementById('sh-list-title').innerText = cat;
