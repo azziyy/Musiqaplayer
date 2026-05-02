@@ -31,6 +31,26 @@
         overflow-x: hidden; 
     }
 
+
+/* Butun dastur uchun: nusxa olish menyusini va ko'k fonni yo'qotish */
+* {
+    -webkit-touch-callout: none;      /* Uzoq bosib turganda menyu chiqishini to'xtatadi */
+    -webkit-user-select: none;       /* Matnni belgilashni taqiqlaydi */
+    user-select: none;
+    -webkit-tap-highlight-color: transparent; /* Bosganda chiqadigan ko'k fonni yo'qotadi */
+    outline: none !important;        /* Ko'k outline chiziqni yo'qotadi */
+}
+
+/* Faqat qidiruv yoziladigan joyda yozish imkoni qolishi uchun */
+input {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+
+
+
+
     /* === ASOSIY KARUSEL (ANIQ 4 QATOR) === */
     .carousel-grid {
         display: flex;
@@ -313,6 +333,76 @@
 }
 
 
+.mix-fab {
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    width: 100px;
+    height: 46px;
+    background: #1db954;
+    border-radius: 23px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    z-index: 10000; /* Eng tepada turishi uchun */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    cursor: pointer;
+    overflow: hidden;
+    transition: width 0.4s, right 0.4s, opacity 0.4s;
+    touch-action: none; /* Ekran skroll bo'lishini to'xtatadi */
+}
+
+.mix-fab.minimized {
+    width: 46px;
+    right: -15px; /* Chetga qisman yashirinadi */
+    opacity: 0.8;
+}
+
+.mix-fab.minimized #fab-text { display: none; }
+#fabCanvas { position: absolute; top:0; left:0; width:100%; height:100%; pointer-events: none; }
+.fab-content { position: relative; z-index: 2; display: flex; align-items: center; gap: 5px; pointer-events: none; font-weight: bold; font-size: 14px; }
+
+
+
+
+
+/* Tomchi effekti animatsiyasi */
+@keyframes waterDrop {
+    0% {
+        transform: scale(0.5);
+        opacity: 0;
+        filter: blur(10px);
+    }
+    60% {
+        transform: scale(1.2); /* O'z holidan biroz kattalashadi */
+        opacity: 1;
+        filter: blur(0);
+    }
+    100% {
+        transform: scale(1); /* O'z holiga qaytadi */
+    }
+}
+
+/* Mix tugmasi uchun asosiy animatsiya klassi */
+.drop-animation {
+    animation: waterDrop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Player ochilganda tugmani kichraytirib yo'qotish */
+.mix-fab.hide-to-scale {
+    transform: scale(0);
+    opacity: 0;
+    transition: all 0.4s ease-in;
+}
+
+/* Player yopilganda qayta chiqish */
+.mix-fab.show-from-scale {
+    display: flex !important;
+    animation: waterDrop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+
 
 </style>
 
@@ -475,6 +565,16 @@
             <div id="sh-lyrics-txt" style="text-align:center; line-height:2.2; font-size:16px; font-weight:600; padding-bottom:30px;"></div>
         </div>
     </div>
+    
+    <div id="mix-fab" class="mix-fab">
+    <canvas id="fabCanvas"></canvas>
+    <div class="fab-content">
+        <i class="fas fa-bolt"></i>
+        <span id="fab-text">MIX</span>
+    </div>
+</div>
+
+
 
     <script>
         // Google Sheets ID
@@ -922,18 +1022,52 @@ function updateMediaSession() {
         function seek(e) { aud.currentTime = (e.offsetX / e.currentTarget.clientWidth) * aud.duration; }
         function formatT(s) { let m = Math.floor(s/60), sc = Math.floor(s%60); return `${m}:${sc<10?'0':''}${sc}`; }
 
-        /* OYNALARNI OCHISH VA YOPISH (HISTORY BILAN) */
-        function openFP() { 
-            document.getElementById('fp').classList.add('open'); 
-            history.pushState({ view: 'fp' }, '');
-        }
-        function closeFP() { 
-            if(history.state && history.state.view === 'fp') {
-                history.back(); // History orqali popstate ishlashiga ruxsat beramiz
-            } else {
-                document.getElementById('fp').classList.remove('open');
-            }
-        }
+        /* OYNALARNI OCHISH VA YOPISH (MIX TUGMASI BILAN) */
+function openFP() { 
+    const fp = document.getElementById('fp');
+    const fab = document.getElementById('mix-fab');
+
+    fp.classList.add('open'); 
+    history.pushState({ view: 'fp' }, '');
+
+    // Mix tugmasini kichraytirib yo'qotamiz
+    if(fab) {
+        fab.classList.remove('show-from-scale');
+        fab.classList.add('hide-to-scale');
+        setTimeout(() => { 
+            if(fab.classList.contains('hide-to-scale')) fab.style.display = 'none'; 
+        }, 400);
+    }
+}
+
+function closeFP() { 
+    const fp = document.getElementById('fp');
+    const fab = document.getElementById('mix-fab');
+
+    if(history.state && history.state.view === 'fp') {
+        history.back(); 
+    } else {
+        fp.classList.remove('open');
+    }
+
+    // Mix tugmasini tomchi kabi qaytaramiz
+    if(fab) {
+        fab.style.display = 'flex';
+        fab.classList.remove('hide-to-scale');
+        fab.classList.add('show-from-scale');
+    }
+}
+
+// Dasturga birinchi kirganda tomchi effektini berish
+window.addEventListener('DOMContentLoaded', () => {
+    const fab = document.getElementById('mix-fab');
+    if(fab) {
+        fab.classList.add('drop-animation');
+    }
+    // Mix init funksiyasini ham chaqirib qo'ying
+    if(typeof initMixFab === 'function') initMixFab();
+});
+
 
         /* --- OYNALARNI BOSHQARISH (Matn va Navbat) --- */
 
@@ -1072,6 +1206,137 @@ window.onpopstate = function(event) {
         resultsDiv.innerHTML = '<p style="text-align:center; color:gray; padding:20px;">Hech narsa topilmadi</p>';
     }
 }
+
+
+
+let fabTimer;
+let fabTime = 0;
+
+function initMixFab() {
+    const fab = document.getElementById('mix-fab');
+    if(!fab) return;
+
+    let isMoving = false;
+    let offsetPos = { x: 0, y: 0 };
+
+    // --- 1. SURISH (DRAG) FUNKSIYASI ---
+    fab.addEventListener('touchstart', (e) => {
+        isMoving = false; // Har safar boshida reset
+        const touch = e.touches[0];
+        offsetPos.x = touch.clientX - fab.offsetLeft;
+        offsetPos.y = touch.clientY - fab.offsetTop;
+        fab.style.transition = 'none'; // Surayotganda animatsiyani o'chirish
+    }, {passive: false});
+
+    fab.addEventListener('touchmove', (e) => {
+        isMoving = true; // Agar qimirlasa, bu "click" emas "move"
+        e.preventDefault(); // ORQADAGI SAHIFA SURILIB KETMASLIGI UCHUN
+        const touch = e.touches[0];
+        
+        let newX = touch.clientX - offsetPos.x;
+        let newY = touch.clientY - offsetPos.y;
+
+        // Ekrondan chiqib ketmasligi uchun chegara
+        newX = Math.max(0, Math.min(window.innerWidth - fab.offsetWidth, newX));
+        newY = Math.max(0, Math.min(window.innerHeight - fab.offsetHeight, newY));
+
+        fab.style.left = newX + 'px';
+        fab.style.top = newY + 'px';
+        fab.style.right = 'auto';
+        fab.style.bottom = 'auto';
+    }, {passive: false});
+
+    fab.addEventListener('touchend', (e) => {
+        fab.style.transition = 'width 0.4s, right 0.4s, opacity 0.4s';
+        if (!isMoving) {
+            handleFabClick(); // Agar qimirlatmasa, demak bosdi
+        } else {
+            startHideTimer(); // Surib bo'lgandan keyin ham taymer ishlasin
+        }
+    });
+
+    // --- 2. BOSILGANDA ISHLASH ---
+    function handleFabClick() {
+        if (fab.classList.contains('minimized')) {
+            fab.classList.remove('minimized');
+            startHideTimer();
+            return;
+        }
+
+        // MIXNI BOSHLASH
+        if (typeof db !== 'undefined' && db.length > 0) {
+            // Tasodifiy barcha qo'shiqlarni olish
+            q = [...db].sort(() => Math.random() - 0.5);
+            qIdx = 0;
+            if (typeof playIndex === 'function') {
+                playIndex();
+                const mini = document.getElementById('mini');
+                if(mini) mini.classList.add('show');
+                startHideTimer();
+                console.log("Mix boshlandi!");
+            }
+        }
+    }
+
+    // --- 3. 5 SONIYALIK TAYMER ---
+    function startHideTimer() {
+        clearTimeout(fabTimer);
+        fabTimer = setTimeout(() => {
+            fab.classList.add('minimized');
+        }, 5000);
+    }
+
+    startHideTimer();
+    animateFabCanvas();
+}
+
+function animateFabCanvas() {
+    const canvas = document.getElementById('fabCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width = canvas.offsetWidth;
+    const h = canvas.height = canvas.offsetHeight;
+
+    ctx.clearRect(0, 0, w, h);
+    
+    // Musiqa ketsa to'lqin ko'rinadi
+    const isPlaying = (typeof aud !== 'undefined' && !aud.paused);
+    if (isPlaying) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let x = 0; x < w; x += 5) {
+            const y = h / 2 + Math.sin(x * 0.15 + fabTime) * 6;
+            if (x === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        fabTime += 0.1;
+    }
+    requestAnimationFrame(animateFabCanvas);
+}
+
+// Ishga tushirish
+document.addEventListener('DOMContentLoaded', initMixFab);
+
+
+window.onpopstate = function(event) {
+    const fp = document.getElementById('fp');
+    const fab = document.getElementById('mix-fab');
+
+    if (fp.classList.contains('open')) {
+        fp.classList.remove('open');
+        
+        // Tugmani tomchi kabi qaytarish
+        if(fab) {
+            fab.style.display = 'flex';
+            fab.classList.remove('hide-to-scale');
+            fab.classList.add('show-from-scale');
+        }
+    }
+};
+
+
 
 
         window.onload = boot;
